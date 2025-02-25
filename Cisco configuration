@@ -1,0 +1,228 @@
+Hier die detaillierte Konfiguration meines Cisco Netzwerkes:
+
+###Building 1###
+Physical Inventory: 
+	1 Router 2811 192.168.4.1 // 192.168.1.1
+	1 Multilayer Switch ??
+	3 Servers
+		ERP Server 192.168.4.3
+		 DHCP Server 192.168.4.2
+		 DNS Server 192.168.4.4
+	 2 2950 Switches
+	 3 PCs
+	 1 Printer
+	 
+Virtual Inventory:
+Network: 192.168.4.0/24
+
+
+**Configuration:**
+Router 2811
+	interface Se0/2/0
+		ip address 192.168.1.1 255.255.255.0
+		 no shutdown
+		 clock rate 2000000
+	 interface Fa0/1
+		 ip address 192.168.4.1 255.255.255.0
+		 no shutdown
+Router# show ip inter brief
+Interface IP-Address OK? Method Status Protocol
+FastEthernet0/0 unassigned YES unset administratively down down
+FastEthernet0/1 192.168.4.1 YES manual up up
+Serial0/2/0 192.168.1.1 YES manual down down
+Vlan1 unassigned YES unset administratively down down
+router rip
+	network 192.168.1.0
+	 network 192.168.4.0
+show ip route
+	192.168.1.0/24 is variably subnetted, 2 subnets, 2 masks
+C 192.168.1.0/24 is directly connected, Serial0/2/0
+L 192.168.1.1/32 is directly connected, Serial0/2/0
+R 192.168.3.0/24 [120/1] via 192.168.1.2, 00:00:02, Serial0/2/0 -> from RIP
+192.168.4.0/24 is variably subnetted, 2 subnets, 2 masks
+C 192.168.4.0/24 is directly connected, FastEthernet0/1
+L 192.168.4.1/32 is directly connected, FastEthernet0/1
+
+
+##Building 2##
+Physical Inventory:
+	1 Router 2811 192.168.3.1 // 192.168.1.2
+	 1 2950 Switch
+	 1 Server DHCP 192.168.3.2
+	 2 PCs
+	 
+Virtual Inventory:
+Network: 192.168.3.1/245
+
+**Configuration:**
+Router 2811
+	interface Se0/2/0
+		ip address 192.168.1.2 255.255.255.0
+		 no shutdown
+		 clock rate 2000000
+	 interface Fa0/1
+		 ip address 192.168.3.1 255.255.255.0
+		 no shutdown
+Interface IP-Address OK? Method Status Protocol
+FastEthernet0/0 unassigned YES unset administratively down down
+FastEthernet0/1 192.168.3.1 YES manual up up
+Serial0/2/0 192.168.1.2 YES manual up up
+Vlan1 unassigned YES unset administratively down down
+router rip
+	network 192.168.1.0
+	 network 192.168.3.0
+192.168.1.0/24 is variably subnetted, 2 subnets, 2 masks
+C 192.168.1.0/24 is directly connected, Serial0/2/0
+L 192.168.1.2/32 is directly connected, Serial0/2/0
+192.168.3.0/24 is variably subnetted, 2 subnets, 2 masks
+C 192.168.3.0/24 is directly connected, FastEthernet0/1
+L 192.168.3.1/32 is directly connected, FastEthernet0/1
+R 192.168.4.0/24 [120/1] via 192.168.1.1, 00:00:02, Serial0/2/0 -> from RIP
+
+------------- 
+
+##Building 1##
+	Removing RIP and replacing with OSPF:
+		no router rip
+		show ip protocols (confirms none, also routing table rip entry gone)
+	 interface loopback 0
+	 no shutdown
+		 ip address 1.1.1.1 255.255.255.0 (confirmed it's in ip table)
+	 router ospf 1
+		 network 192.168.4.1 0.0.0.255 area 0
+		 network 192.168.1.1 0.0.0.255 area 0
+
+##Building 2##
+DHCP -2 Server. Added a Pool for Building 3 for DHCP Relay.
+
+Router 2811
+	interface Se0/0/0
+		ip address 10.1.1.1 255.255.255.0
+		 no shutdown
+end
+Router#show ip inter brief
+Interface IP-Address OK? Method Status Protocol
+FastEthernet0/0 unassigned YES unset administratively down down
+FastEthernet0/1 192.168.3.1 YES manual up up
+Serial0/0/0 10.1.1.1 YES manual up up
+Serial0/2/0 192.168.1.2 YES manual up up
+Vlan1 unassigned YES unset administratively down down
+	Removing RIP and replacing with OSPF:
+		no router rip
+		show ip protocols (confirms none, also routing table rip entry gone)
+	 interface loopback 0
+	 no shutdown
+		 ip address 1.1.2.1 255.255.255.0 do(confirmed it's in ip table)
+	 router ospf 1
+		 network 192.168.1.2 0.0.0.255 area 0
+		 network 192.168.3.1 0.0.0.255 area 0
+		 network 10.1.1.1 0.0.0.255 area 0
+	confirmed through "show ip protocol" & "show ip route" that ospf active, loopback address set + already learned network from neighbor 1.1.1.1
+
+
+##Building 3##
+Physical Inventory:
+	1 Router 2811 192.168.2.1/24
+	 1 Multilayer Switch 3560-24PS
+	 1 2950 Switch
+	 2 Server 
+	   1 Server XXX 192.168.2.2
+	   1 Server YYY 192.168.2.3
+	1 PC
+
+
+Router R6
+	interface Se0/0/0
+		ip address 10.1.1.2 255.255.255.0
+		 no shutdown
+		 clock rate 2000000
+	 interface Fa0/1
+		 ip address 192.168.2.1 255.255.255.0
+		 no shutdown
+	 interface loopback 0
+	    ip address 1.1.1.1 255.255.255.0
+	     no shutdown
+end
+show ip inter brief
+Interface IP-Address OK? Method Status Protocol
+FastEthernet0/0 192.168.2.1 YES manual up up
+FastEthernet0/1 unassigned YES unset administratively down down
+Serial0/0/0 10.1.1.2 YES manual down down
+Serial0/2/0 unassigned YES unset administratively down down
+Vlan1 unassigned YES unset administratively down down
+	 interface loopback 0
+	 no shutdown
+		 ip address 1.1.3.1 255.255.255.0 do(confirmed it's in ip table)
+	 router ospf 1
+		 network 192.168.2.1 0.0.0.255 area 0
+		 network 10.1.1.2 0.0.0.255 area 0
+	 interface Fa0/0
+		 ip helper-address 192.168.3.2
+
+-----
+
+##Building 3##
+Switch 3:
+	int vlan 1
+		ip address 192.168.2.9 255.255.255.0
+		 no shutdown
+	verified w show ip interface brief
+		vlan 10
+			  name Corp
+		 vlan 20
+			  name Guest
+	 interface Fa0/6
+		 switchport access vlan 20
+		 switchport mode access
+	 interface Fa0/5
+		 switchport access vlan 10
+		 switchport mode access
+	 verified with do show vlan
+	 interface Fa0/1
+		 switchport mode trunk
+	 verfiied with do show vlan that it's gone from VLAN 1
+	 verified with show int trunk that it's in trunking mode
+
+Router  R6:
+	int Fa0/0
+		 no ip address (to remove Gateway and move to VLAN 1)
+	int Fa0/0.1
+		encapsulation dot1Q 1
+		 ip address 192.168.2.1 255.255.255.0
+	 int Fa0/0.10
+		 encapsulation dot1Q 10
+		 ip address 192.168.5.1 255.255.255.0
+	 int Fa0/0.20
+		 encapsulation dot1Q 20
+		 ip address 192.168.6.1 255.255.255.0
+	 int Fa0/0
+		  no shutdown
+verfied sub interfaces exist with do show ip interface brief 
+then, ping among computers to verify connectivity!
+At last, add them to the OSPF Protocol so it can advertise them.
+	 router ospf 1
+		network 192.168.6.1 0.0.0.255 area 0
+		 network 192.168.5.2 0.0.0.255 area 0
+
+
+
+-----
+
+Target: Isolate VLAN 20 (Guest) from VLAN 1, but still allow to communicate with VLAN 10 (Corp)
+How - ACL Outbound to VLAN 1 from Router R6
+
+Router R6:
+	show access-list (to ensure it's empty before starting)
+		access-list 101 deny ip host 192.168.6.2 192.168.2.0 0.0.0.255.
+		 access-list  101 deny ip host 192.168.6.2 10.1.1.0 0.0.0.255
+		 access-list 101 permit ip host 192.168.6.2. 192.168.5.0 0.0.0.255
+		 access-list 101 permit ip any any 
+	 int Fa0/0.20
+		 ip access-group 101 in
+	 access-list 102 deny ip host 192.168.6.2 any
+	 access-list 102 permit ip any any
+		int Se0/0/0
+			ip access-group 102 out
+	 Verify ACL applied with show ip interface Fa0/0.20 (confirm Inbound Access list 101 applied)
+Ping PCV10 & PCV1 from PCV20, does it work?
+Then, verify on Router CLI with show access-lists 101 if Counters increased. Works!
